@@ -8,8 +8,73 @@ import (
 	"strconv"
 )
 
-// Base struct for dynamic tag processors. Replace #{DICTIONATY_KEY} by value from
-// processor dictionaty and ${ENVIRONMENT_VARIABLE} by environment variable
+// Base struct for dynamic tag processors.
+type DynamicTagProcessor struct {
+	dictionary map[string]string
+	Tag        string
+}
+
+// Init dynamic processor
+func (processor *DynamicTagProcessor) InitProcessor() {
+	processor.dictionary = make(map[string]string)
+}
+
+// Set dictionary.
+// Parameters:
+//   - dict dictionary.
+func (processor *DynamicTagProcessor) SetDictionary(dict map[string]string) {
+	processor.dictionary = dict
+}
+
+// Returns dictionary.
+// Returns:
+//   - dictionary.
+func (processor DynamicTagProcessor) GetDictionary() map[string]string {
+	return processor.dictionary
+}
+
+// Set dictionary value.
+// Parameters:
+//   - key key
+//   - value value
+func (processor *DynamicTagProcessor) SetDictionaryValue(key string, value string) {
+	processor.dictionary[key] = value
+}
+
+// Remove dictionary value.
+// Parameters:
+//   - key key
+func (processor *DynamicTagProcessor) RemoveDictionaryValue(key string) {
+	delete(processor.dictionary, key)
+}
+
+// This function is called for all simple (like int8,int16, etc.) structure fields.
+// Should returns value corresponednd to tag.
+// Parameters:
+//   - tag processed tag. To this function passed processed tag. I.e. all substring like
+//     '${KEY}' already replaced by dictionary or environment variable value
+//   - t reflect structure field
+//   - v reflect structure value
+//   - path json path to structure filed (like '$.InternalStructure.Data1')
+//
+// Returns:
+//   - result string (for example value of environment variable with name specified in tag)
+//   - if 'false' result value will not be set (for example if the environment variable is not exists)
+//   - error in case of error. Processing will be interrupted and the error value will returned
+func (processor DynamicTagProcessor) GetSimpleValue(tag string, t reflect.StructField, v reflect.Value, path string) (string, bool, error) {
+	return tag, true, nil
+}
+
+// Fill structure fields by tags
+// Parameters:
+//   - data pointer to filled structure.
+//   - blackList black list of fields. This fields will be ignored during processing
+//     Path to fields should be in the json path format. For example ($.InternalStructure.Field1)
+//     Only simple paths is supported (without filters)
+//
+// Returns:
+//   - error in case of error or nil
+//
 // For example we have processor (EnvProcessor) which process envoironment
 // variables and struct which is defined in follow way:
 //
@@ -18,39 +83,22 @@ import (
 //	}
 //
 // During processing:
-//   - first name or environment variable will be calculated as value of
-//     environment variable SERVER_NAME + '_VALUE' for example if
-//     the environment variable 'SERVER_NAME' is set to 'TEST_SERVER' the result
-//     name would be 'TEST_SERVER_VALUE'
-//   - second value of 'EnvValue' will be set as value of environment variable
-//     'TEST_SERVER_VALUE'.
-type DynamicTagProcessor struct {
-	dictionary map[string]string
-	Tag        string
-}
-
-func (processor *DynamicTagProcessor) InitProcessor() {
-	processor.dictionary = make(map[string]string)
-}
-
-func (processor *DynamicTagProcessor) SetDictionary(dict map[string]string) {
-	processor.dictionary = dict
-}
-
-func (processor DynamicTagProcessor) GetDictionary() map[string]string {
-	return processor.dictionary
-}
-
-func (processor *DynamicTagProcessor) SetDictionaryValue(key string, value string) {
-	processor.dictionary[key] = value
-}
-
-func (processor *DynamicTagProcessor) RemoveDictionaryValue(key string) {
-	delete(processor.dictionary, key)
-}
-
-func (processor DynamicTagProcessor) GetSimpleValue(tag string, t reflect.StructField, v reflect.Value, path string) (string, error) {
-	return tag, nil
+//   - get value of 'SERVER_NAME' key from processor dictionary
+//   - if the value is not exists get 'SERVER_NAME' environment variable
+//   - if the environment variable is not defined use empty string
+//   - replace 'SERVER_NAME' by the value. For example if 'SERVER_NAME' is set
+//     to 'TEST' tag will be 'TEST_VALUE'
+//   - call function processor.GetSimpleValue with tag 'TEST_VALUE' which calulate
+//     'EnvValue' field value. Default implementation just returns tag value. This
+//     behavouir can be changed in inhereted processor
+func (processor DynamicTagProcessor) Process(data any, blackList []string) error {
+	v := reflect.ValueOf(data)
+	t := reflect.TypeOf(data)
+	if v.Kind() != reflect.Pointer || v.Elem().Kind() != reflect.Struct {
+		return errors.New("pointer to structure is expected")
+	}
+	err := processor.processStructure(t, v, "$", blackList)
+	return err
 }
 
 func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v reflect.Value, path string) error {
@@ -62,9 +110,12 @@ func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v 
 	if err != nil {
 		return err
 	}
-	val, err := processor.GetSimpleValue(res, t, v, path)
+	val, isSet, err := processor.GetSimpleValue(res, t, v, path)
 	if err != nil {
 		return err
+	}
+	if !isSet {
+		return nil
 	}
 	switch t.Type.Kind() {
 	case reflect.String:
@@ -105,7 +156,6 @@ func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v 
 	default:
 		return errors.New("unexpected key type")
 	}
-	fmt.Println("Processed value=", val)
 	return nil
 }
 
@@ -139,14 +189,4 @@ func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.
 		}
 	}
 	return nil
-}
-
-func (processor DynamicTagProcessor) Process(data any, blackList []string) error {
-	v := reflect.ValueOf(data)
-	t := reflect.TypeOf(data)
-	if v.Kind() != reflect.Pointer || v.Elem().Kind() != reflect.Struct {
-		return errors.New("pointer to structure is expected")
-	}
-	err := processor.processStructure(t, v, "$", blackList)
-	return err
 }
