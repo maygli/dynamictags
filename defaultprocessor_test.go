@@ -88,3 +88,21 @@ func TestDefaultProcessorSimple(t *testing.T) {
 	assert.NoError(t, err)
 	verifyResult(t, testStruct, false)
 }
+
+func TestDefaultProcessorBlackList(t *testing.T) {
+	defaultProcessor := NewDefaultProcessor()
+	defaultProcessor.SetDictionaryValue(INT_PREFIX_KEY, INT_PREFIX_VAL)
+	defaultProcessor.SetDictionaryValue(UINT_PREFIX_KEY, UINT_PREFIX_VAL)
+	defaultProcessor.SetDictionaryValue(FLOAT_PREFIX_KEY, FLOAT_PREFIX_VAL)
+	defaultProcessor.SetDictionaryValue(STRING_PREFIX_KEY, STRING_PREFIX_VAL)
+	defaultProcessor.SetDictionaryValue(BOOL_PREFIX_KEY, BOOL_PREFIX_VAL)
+	defaultProcessor.SetDictionaryValue(INTERNAL_INT_PREFIX_KEY, INTERNAL_INT_PREFIX_VAL)
+	defaultProcessor.SetDictionaryValue(INTERNAL_FLOAT_PREFIX_KEY, INTERNAL_FLOAT_PREFIX_VAL)
+	defaultProcessor.SetDictionaryValue(INTERNAL_STRING_PREFIX_KEY, INTERNAL_STRING_PREFIX_VAL)
+	blackList := make([]string, 0)
+	blackList = append(blackList, "$.BlackListData")
+	testStruct := TestStruct{}
+	err := defaultProcessor.Process(&testStruct, blackList)
+	assert.NoError(t, err)
+	verifyResult(t, testStruct, true)
+}

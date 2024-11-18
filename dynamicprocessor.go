@@ -109,7 +109,7 @@ func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v 
 	return nil
 }
 
-func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.Value, path string, blackList *[]string) error {
+func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.Value, path string, blackList []string) error {
 	var structValue reflect.Value
 	var structType reflect.Type
 	if v.Kind() == reflect.Pointer {
@@ -127,7 +127,7 @@ func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.
 		}
 		var err error
 		currPath := path + "." + fieldType.Name
-		if blackList == nil || !slices.Contains(*blackList, currPath) {
+		if blackList == nil || !slices.Contains(blackList, currPath) {
 			if fieldValue.Kind() == reflect.Struct {
 				err = processor.processStructure(fieldType.Type, fieldValue, currPath, blackList)
 			} else {
@@ -141,12 +141,12 @@ func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.
 	return nil
 }
 
-func (processor DynamicTagProcessor) Process(data any, blackList *[]string) error {
+func (processor DynamicTagProcessor) Process(data any, blackList []string) error {
 	v := reflect.ValueOf(data)
 	t := reflect.TypeOf(data)
 	if v.Kind() != reflect.Pointer || v.Elem().Kind() != reflect.Struct {
 		return errors.New("pointer to structure is expected")
 	}
-	err := processor.processStructure(t, v, "", blackList)
+	err := processor.processStructure(t, v, "$", blackList)
 	return err
 }
