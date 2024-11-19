@@ -1,9 +1,9 @@
 package dynamictags
 
-func NewDefaultProcessor() *DynamicTagProcessor {
+func NewEnvProcessor() *DynamicTagProcessor {
 	processor := DynamicTagProcessor{}
 	processor.InitProcessor()
-	converter := NewDefaultTagConverter()
+	converter := NewEnvTagConverter()
 	processor.AddTagConverter(converter)
 	return &processor
 }

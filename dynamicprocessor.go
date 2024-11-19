@@ -11,7 +11,7 @@ import (
 // Base struct for dynamic tag processors.
 type DynamicTagProcessor struct {
 	dictionary map[string]string
-	Tag        string
+	converters []TagConverterer
 }
 
 // Init dynamic processor
@@ -48,21 +48,11 @@ func (processor *DynamicTagProcessor) RemoveDictionaryValue(key string) {
 	delete(processor.dictionary, key)
 }
 
-// This function is called for all simple (like int8,int16, etc.) structure fields.
-// Should returns value corresponednd to tag.
+// Add tag converter
 // Parameters:
-//   - tag processed tag. To this function passed processed tag. I.e. all substring like
-//     '${KEY}' already replaced by dictionary or environment variable value
-//   - t reflect structure field
-//   - v reflect structure value
-//   - path json path to structure filed (like '$.InternalStructure.Data1')
-//
-// Returns:
-//   - result string (for example value of environment variable with name specified in tag)
-//   - if 'false' result value will not be set (for example if the environment variable is not exists)
-//   - error in case of error. Processing will be interrupted and the error value will returned
-func (processor DynamicTagProcessor) GetSimpleValue(tag string, t reflect.StructField, v reflect.Value, path string) (string, bool, error) {
-	return tag, true, nil
+//   - converter tag converter.
+func (processor *DynamicTagProcessor) AddTagConverter(converter TagConverterer) {
+	processor.converters = append(processor.converters, converter)
 }
 
 // Fill structure fields by tags
@@ -101,22 +91,7 @@ func (processor DynamicTagProcessor) Process(data any, blackList []string) error
 	return err
 }
 
-func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v reflect.Value, path string) error {
-	tag := t.Tag.Get(processor.Tag)
-	if tag == "" {
-		return nil
-	}
-	res, err := ProcessString(tag, processor.dictionary)
-	if err != nil {
-		return err
-	}
-	val, isSet, err := processor.GetSimpleValue(res, t, v, path)
-	if err != nil {
-		return err
-	}
-	if !isSet {
-		return nil
-	}
+func (processor DynamicTagProcessor) setStringSimpleValue(t reflect.StructField, v reflect.Value, val string, path string) error {
 	switch t.Type.Kind() {
 	case reflect.String:
 		v.SetString(val)
@@ -155,6 +130,31 @@ func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v 
 		v.SetBool(n)
 	default:
 		return errors.New("unexpected key type")
+	}
+	return nil
+}
+
+func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v reflect.Value, path string) error {
+	for _, converter := range processor.converters {
+		tag := t.Tag.Get(converter.GetTag())
+		if tag == "" {
+			return nil
+		}
+		res, err := ProcessString(tag, processor.dictionary)
+		if err != nil {
+			return err
+		}
+		val, isSet, err := converter.GetSimpleValue(res, t, v, path)
+		if err != nil {
+			return err
+		}
+		if isSet {
+			strVal, ok := val.(string)
+			if ok {
+				err = processor.setStringSimpleValue(t, v, strVal, path)
+			}
+			return err
+		}
 	}
 	return nil
 }

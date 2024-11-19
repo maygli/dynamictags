@@ -73,6 +73,15 @@ func verifyResult(t *testing.T, res TestStruct, isWithBalckList bool) {
 	assert.Equal(t, EXPECTED_INTERNAL_STRING, res.IntStruct.StringData)
 }
 
+func TestCreateDeafultProcessor(t *testing.T) {
+	processor := NewDefaultProcessor()
+	assert.NotNil(t, processor)
+	assert.Equal(t, 1, len(processor.converters))
+	conv, ok := processor.converters[0].(*DefaultTagConverter)
+	assert.True(t, ok)
+	assert.NotNil(t, conv)
+}
+
 func TestDefaultProcessorSimple(t *testing.T) {
 	defaultProcessor := NewDefaultProcessor()
 	defaultProcessor.SetDictionaryValue(INT_PREFIX_KEY, INT_PREFIX_VAL)
