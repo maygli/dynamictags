@@ -91,6 +91,104 @@ func (processor DynamicTagProcessor) Process(data any, blackList []string) error
 	return err
 }
 
+func (processor DynamicTagProcessor) convertBool(val any) (bool, error) {
+	res, ok := val.(bool)
+	if ok {
+		return res, nil
+	}
+	return false, errors.New("unsupported type")
+}
+
+func (processor DynamicTagProcessor) convertFloat(val any) (float64, error) {
+	val32, ok := val.(float32)
+	if ok {
+		return float64(val32), nil
+	}
+	val64, ok := val.(float64)
+	if ok {
+		return val64, nil
+	}
+	return 0, errors.New("unsopported type")
+}
+
+func (processor DynamicTagProcessor) convertUInt(val any) (uint64, error) {
+	valInt, ok := val.(uint)
+	if ok {
+		return uint64(valInt), nil
+	}
+	val8, ok := val.(uint8)
+	if ok {
+		return uint64(val8), nil
+	}
+	val16, ok := val.(uint16)
+	if ok {
+		return uint64(val16), nil
+	}
+	val32, ok := val.(uint32)
+	if ok {
+		return uint64(val32), nil
+	}
+	val64, ok := val.(uint64)
+	if ok {
+		return val64, nil
+	}
+	return 0, errors.New("unsopported type")
+}
+
+func (processor DynamicTagProcessor) convertInt(val any) (int64, error) {
+	valInt, ok := val.(int)
+	if ok {
+		return int64(valInt), nil
+	}
+	val8, ok := val.(int8)
+	if ok {
+		return int64(val8), nil
+	}
+	val16, ok := val.(int16)
+	if ok {
+		return int64(val16), nil
+	}
+	val32, ok := val.(int32)
+	if ok {
+		return int64(val32), nil
+	}
+	val64, ok := val.(int64)
+	if ok {
+		return val64, nil
+	}
+	return 0, errors.New("unsopported type")
+}
+
+func (processor DynamicTagProcessor) setInterfaceSimpleValue(t reflect.StructField, v reflect.Value, val any, path string) error {
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		valInt, err := processor.convertInt(val)
+		if err != nil {
+			return err
+		}
+		v.SetInt(valInt)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		valUInt, err := processor.convertUInt(val)
+		if err != nil {
+			return err
+		}
+		v.SetUint(valUInt)
+	case reflect.Float32, reflect.Float64:
+		valFloat, err := processor.convertFloat(val)
+		if err != nil {
+			return err
+		}
+		v.SetFloat(valFloat)
+	case reflect.Bool:
+		valBool, err := processor.convertBool(val)
+		if err != nil {
+			return err
+		}
+		v.SetBool(valBool)
+	}
+	return nil
+}
+
 func (processor DynamicTagProcessor) setStringSimpleValue(t reflect.StructField, v reflect.Value, val string, path string) error {
 	switch t.Type.Kind() {
 	case reflect.String:
@@ -152,6 +250,8 @@ func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v 
 			strVal, ok := val.(string)
 			if ok {
 				err = processor.setStringSimpleValue(t, v, strVal, path)
+			} else {
+				err = processor.setInterfaceSimpleValue(t, v, val, path)
 			}
 			return err
 		}

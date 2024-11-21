@@ -1,8 +1,6 @@
 package dynamictags
 
 import (
-	"encoding/json"
-	"fmt"
 	"reflect"
 
 	"github.com/PaesslerAG/jsonpath"
@@ -13,28 +11,26 @@ const (
 )
 
 type JsonTagConverter struct {
+	jsonData any
 }
 
-func NewJsonTagConverter() TagConverterer {
-	val := interface{}(nil)
-	err := json.Unmarshal([]byte("{\"message\":{\"test\":122}}"), &val)
+func NewJsonTagConverter(content any, rootPath string) (TagConverterer, error) {
+	conv := JsonTagConverter{}
+	var err error
+	conv.jsonData, err = jsonpath.Get(rootPath, content)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	jsonmsg, err := jsonpath.Get("$.message.test", val)
-	if err != nil {
-		return nil
-	}
-	jsonmap, ok := jsonmsg.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-	fmt.Println(jsonmap)
-	return &EnvTagConverter{}
+	return &conv, nil
 }
 
 func (conv *JsonTagConverter) GetSimpleValue(tag string, t reflect.StructField, v reflect.Value, path string) (any, bool, error) {
-	return "", false, nil
+	resMap, ok := conv.jsonData.(map[string]interface{})
+	if !ok {
+		return "", false, nil
+	}
+	val, ok := resMap[tag]
+	return val, ok, nil
 }
 
 func (conv JsonTagConverter) GetTag() string {
