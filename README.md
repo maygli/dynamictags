@@ -8,8 +8,8 @@ For example for structure:
 
 ```go
 type TestStruct struct {
-  Mode string  `env:`${SERVER_NAME}_MODE,defualt:https,json:mode`
-  Port int     `env:`${SERVER_NAME}_PORT,default:443,json:server_port`   
+  Mode string  `env:`${SERVER_NAME}_MODE`
+  Port int     `env:`${SERVER_NAME}_PORT`   
 }
 ```
 If environment variable 'SERVER_NAME' has value 'TEST' field 'Mode' will be processed in the follow way:
