@@ -35,12 +35,12 @@ func TestJsonTagConverter(t *testing.T) {
 	assert.NotNil(t, conv)
 	assert.Equal(t, EXPECTED_JSON_TAG, conv.GetTag())
 	// Get existed value
-	val, ok, err := conv.GetSimpleValue("val1", reflect.StructField{}, reflect.Value{}, "testpath")
+	val, ok, err := conv.GetSimpleValue("val1", reflect.StructField{}, reflect.Value{}, "$")
 	assert.NotNil(t, val)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	// Get non existed value
-	val, ok, err = conv.GetSimpleValue("val1567", reflect.StructField{}, reflect.Value{}, "testpath")
+	val, ok, err = conv.GetSimpleValue("val1567", reflect.StructField{}, reflect.Value{}, "$")
 	assert.Nil(t, val)
 	assert.NoError(t, err)
 	assert.False(t, ok)

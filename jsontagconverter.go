@@ -25,12 +25,8 @@ func NewJsonTagConverter(content any, rootPath string) (TagConverterer, error) {
 }
 
 func (conv *JsonTagConverter) GetSimpleValue(tag string, t reflect.StructField, v reflect.Value, path string) (any, bool, error) {
-	resMap, ok := conv.jsonData.(map[string]interface{})
-	if !ok {
-		return "", false, nil
-	}
-	val, ok := resMap[tag]
-	return val, ok, nil
+	data, err := jsonpath.Get(path+"."+tag, conv.jsonData)
+	return data, err == nil, nil
 }
 
 func (conv JsonTagConverter) GetTag() string {

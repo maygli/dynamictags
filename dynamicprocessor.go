@@ -87,7 +87,8 @@ func (processor DynamicTagProcessor) Process(data any, blackList []string) error
 	if v.Kind() != reflect.Pointer || v.Elem().Kind() != reflect.Struct {
 		return errors.New("pointer to structure is expected")
 	}
-	err := processor.processStructure(t, v, "$", blackList)
+	tagpaths := make(map[string]string)
+	err := processor.processStructure(t, v, "$", tagpaths, blackList)
 	return err
 }
 
@@ -159,22 +160,70 @@ func (processor DynamicTagProcessor) convertInt(val any) (int64, error) {
 	return 0, errors.New("unsopported type")
 }
 
+func (processor DynamicTagProcessor) getUIntInterfaceValue(val any) (uint64, error) {
+	valUInt, err := processor.convertUInt(val)
+	if err == nil {
+		return valUInt, nil
+	}
+	valInt, err := processor.convertInt(val)
+	if err == nil {
+		return uint64(valInt), nil
+	}
+	valFloat, err := processor.convertFloat(val)
+	if err == nil {
+		return uint64(valFloat), err
+	}
+	return 0, err
+}
+
+func (processor DynamicTagProcessor) getIntInterfaceValue(val any) (int64, error) {
+	valInt, err := processor.convertInt(val)
+	if err == nil {
+		return valInt, nil
+	}
+	valUint, err := processor.convertUInt(val)
+	if err == nil {
+		return int64(valUint), nil
+	}
+	valFloat, err := processor.convertFloat(val)
+	if err == nil {
+		return int64(valFloat), err
+	}
+	return 0, err
+}
+
+func (processor DynamicTagProcessor) getFloatInterfaceValue(val any) (float64, error) {
+	valFloat, err := processor.convertFloat(val)
+	if err == nil {
+		return valFloat, nil
+	}
+	valInt, err := processor.convertInt(val)
+	if err == nil {
+		return float64(valInt), nil
+	}
+	valUInt, err := processor.convertUInt(val)
+	if err == nil {
+		return float64(valUInt), err
+	}
+	return 0, err
+}
+
 func (processor DynamicTagProcessor) setInterfaceSimpleValue(t reflect.StructField, v reflect.Value, val any, path string) error {
 	switch v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		valInt, err := processor.convertInt(val)
+		valInt, err := processor.getIntInterfaceValue(val)
 		if err != nil {
 			return err
 		}
 		v.SetInt(valInt)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		valUInt, err := processor.convertUInt(val)
+		valUInt, err := processor.getUIntInterfaceValue(val)
 		if err != nil {
 			return err
 		}
 		v.SetUint(valUInt)
 	case reflect.Float32, reflect.Float64:
-		valFloat, err := processor.convertFloat(val)
+		valFloat, err := processor.getFloatInterfaceValue(val)
 		if err != nil {
 			return err
 		}
@@ -232,17 +281,22 @@ func (processor DynamicTagProcessor) setStringSimpleValue(t reflect.StructField,
 	return nil
 }
 
-func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v reflect.Value, path string) error {
+func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v reflect.Value, tagpaths map[string]string, path string) error {
 	for _, converter := range processor.converters {
-		tag := t.Tag.Get(converter.GetTag())
-		if tag == "" {
-			return nil
+		tag := converter.GetTag()
+		tagVal := t.Tag.Get(tag)
+		if tagVal == "" {
+			continue
 		}
-		res, err := ProcessString(tag, processor.dictionary)
+		res, err := ProcessString(tagVal, processor.dictionary)
 		if err != nil {
 			return err
 		}
-		val, isSet, err := converter.GetSimpleValue(res, t, v, path)
+		tagPath, ok := tagpaths[tag]
+		if !ok {
+			tagPath = path
+		}
+		val, isSet, err := converter.GetSimpleValue(res, t, v, tagPath)
 		if err != nil {
 			return err
 		}
@@ -259,7 +313,28 @@ func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v 
 	return nil
 }
 
-func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.Value, path string, blackList []string) error {
+func (processor DynamicTagProcessor) fillTagsPath(t reflect.StructField, tagPaths map[string]string) error {
+	for _, converter := range processor.converters {
+		tag := converter.GetTag()
+		tagVal := t.Tag.Get(tag)
+		tagVal, err := ProcessString(tagVal, processor.dictionary)
+		if err != nil {
+			return err
+		}
+		if tagVal == "" {
+			tagVal = t.Name
+		}
+		currTagPath, ok := tagPaths[tag]
+		if !ok {
+			currTagPath = "$"
+		}
+		currTagPath = currTagPath + "." + tagVal
+		tagPaths[tag] = currTagPath
+	}
+	return nil
+}
+
+func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.Value, path string, tagpaths map[string]string, blackList []string) error {
 	var structValue reflect.Value
 	var structType reflect.Type
 	if v.Kind() == reflect.Pointer {
@@ -279,9 +354,13 @@ func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.
 		currPath := path + "." + fieldType.Name
 		if blackList == nil || !slices.Contains(blackList, currPath) {
 			if fieldValue.Kind() == reflect.Struct {
-				err = processor.processStructure(fieldType.Type, fieldValue, currPath, blackList)
+				err = processor.fillTagsPath(fieldType, tagpaths)
+				if err != nil {
+					return err
+				}
+				err = processor.processStructure(fieldType.Type, fieldValue, currPath, tagpaths, blackList)
 			} else {
-				err = processor.processSimpleType(fieldType, fieldValue, currPath)
+				err = processor.processSimpleType(fieldType, fieldValue, tagpaths, path)
 			}
 		}
 		if err != nil {
