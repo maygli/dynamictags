@@ -2,6 +2,7 @@ package dynamictags
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/PaesslerAG/jsonpath"
 )
@@ -25,7 +26,12 @@ func NewJsonTagConverter(content any, rootPath string) (TagConverterer, error) {
 }
 
 func (conv *JsonTagConverter) GetSimpleValue(tag string, t reflect.StructField, v reflect.Value, path string) (any, bool, error) {
-	data, err := jsonpath.Get(path+"."+tag, conv.jsonData)
+	jsonPath := path
+	if !strings.HasPrefix(tag, "$") {
+		// If path is relative
+		jsonPath = path + "." + tag
+	}
+	data, err := jsonpath.Get(jsonPath, conv.jsonData)
 	return data, err == nil, nil
 }
 
