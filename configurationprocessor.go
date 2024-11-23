@@ -5,13 +5,12 @@ package dynamictags
 //   - Json configuration processor if success.
 //   - error if error occured during processor creation
 func NewConfigurationProcessor(content any, rootPath string) (*DynamicTagProcessor, error) {
-	jsonconv, err := NewJsonTagConverter(content, rootPath)
-	if err != nil {
-		return nil, err
-	}
 	processor := DynamicTagProcessor{}
 	processor.InitProcessor()
-	processor.AddTagConverter(jsonconv)
+	jsonconv, err := NewJsonTagConverter(content, rootPath)
+	if err == nil {
+		processor.AddTagConverter(jsonconv)
+	}
 	envconv := NewEnvTagConverter()
 	processor.AddTagConverter(envconv)
 	defaultconv := NewDefaultTagConverter()

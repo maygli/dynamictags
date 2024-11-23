@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 // Base struct for dynamic tag processors.
@@ -321,14 +322,18 @@ func (processor DynamicTagProcessor) fillTagsPath(t reflect.StructField, tagPath
 		if err != nil {
 			return err
 		}
-		if tagVal == "" {
-			tagVal = t.Name
+		currTagPath := tagVal
+		if !strings.HasPrefix(tagVal, "$") {
+			if tagVal == "" {
+				tagVal = t.Name
+			}
+			var ok bool
+			currTagPath, ok = tagPaths[tag]
+			if !ok {
+				currTagPath = "$"
+			}
+			currTagPath = currTagPath + "." + tagVal
 		}
-		currTagPath, ok := tagPaths[tag]
-		if !ok {
-			currTagPath = "$"
-		}
-		currTagPath = currTagPath + "." + tagVal
 		tagPaths[tag] = currTagPath
 	}
 	return nil
