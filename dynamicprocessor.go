@@ -2,7 +2,6 @@ package dynamictags
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"slices"
 	"strconv"
@@ -385,9 +384,9 @@ func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.
 		fieldValue := structValue.Field(i)
 		fieldType := structType.Field(i)
 		if !fieldValue.CanSet() {
-			return fmt.Errorf("field %s can not be changed", v.Elem().Type().Name())
+			continue
 		}
-		var err error
+		var err error = nil
 		currPath := path + "." + fieldType.Name
 		if blackList == nil || !slices.Contains(blackList, currPath) {
 			if fieldValue.Kind() == reflect.Struct {

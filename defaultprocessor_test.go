@@ -57,6 +57,7 @@ type TestStruct struct {
 	BoolData      bool     `default:"${BOOL_PREFIX}"`
 	BlackListData string   `default:"BlackList"`
 	Slice         []string `default:"one,two,free"`
+	unField       string   `default:"unField"`
 	NoTagData     string
 	IntStruct     TestInternalStruct
 }
@@ -72,6 +73,7 @@ func verifyResult(t *testing.T, res TestStruct, isWithBalckList bool) {
 	assert.Equal(t, EXPECTED_SLICE_VAL0, res.Slice[0])
 	assert.Equal(t, EXPECTED_SLICE_VAL1, res.Slice[1])
 	assert.Equal(t, EXPECTED_SLICE_VAL2, res.Slice[2])
+	assert.Equal(t, "", res.unField)
 	if isWithBalckList {
 		assert.Equal(t, res.BlackListData, EXPECTED_BLACK_BLACK)
 	} else {
