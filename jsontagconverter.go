@@ -26,7 +26,7 @@ func NewJsonTagConverter(content any, rootPath string) (TagConverterer, error) {
 }
 
 func (conv *JsonTagConverter) GetSimpleValue(tag string, t reflect.StructField, v reflect.Value, path string) (any, bool, error) {
-	jsonPath := path
+	jsonPath := tag
 	if !strings.HasPrefix(tag, "$") {
 		// If path is relative
 		jsonPath = path + "." + tag

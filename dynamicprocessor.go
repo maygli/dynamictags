@@ -209,6 +209,23 @@ func (processor DynamicTagProcessor) getFloatInterfaceValue(val any) (float64, e
 	return 0, err
 }
 
+func (processor DynamicTagProcessor) convertSliceInterface(src []interface{}) ([]string, error) {
+	res := make([]string, 0, len(src))
+	for _, srcData := range src {
+		str, ok := srcData.(string)
+		if !ok {
+			return res, errors.New("incompatible slice elements type")
+		}
+		res = append(res, str)
+	}
+	return res, nil
+}
+
+func (processor DynamicTagProcessor) convertSliceString(src string) ([]string, error) {
+	res := strings.Split(src, ",")
+	return res, nil
+}
+
 func (processor DynamicTagProcessor) setInterfaceSimpleValue(t reflect.StructField, v reflect.Value, val any, path string) error {
 	switch v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -235,6 +252,15 @@ func (processor DynamicTagProcessor) setInterfaceSimpleValue(t reflect.StructFie
 			return err
 		}
 		v.SetBool(valBool)
+	case reflect.Slice:
+		slice, ok := val.([]interface{})
+		if ok {
+			sliceVal, err := processor.convertSliceInterface(slice)
+			if err != nil {
+				return err
+			}
+			v.Set(reflect.ValueOf(sliceVal))
+		}
 	}
 	return nil
 }
@@ -276,6 +302,12 @@ func (processor DynamicTagProcessor) setStringSimpleValue(t reflect.StructField,
 			return err
 		}
 		v.SetBool(n)
+	case reflect.Slice:
+		sliceVal, err := processor.convertSliceString(val)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(sliceVal))
 	default:
 		return errors.New("unexpected key type")
 	}

@@ -37,6 +37,10 @@ const (
 	EXPECTED_INTERNAL_INT    = 72456789
 	EXPECTED_INTERNAL_FLOAT  = 52.99
 	EXPECTED_INTERNAL_STRING = "StrInternalString"
+	EXPECTED_SLICE_SIZE      = 3
+	EXPECTED_SLICE_VAL0      = "one"
+	EXPECTED_SLICE_VAL1      = "two"
+	EXPECTED_SLICE_VAL2      = "free"
 )
 
 type TestInternalStruct struct {
@@ -46,12 +50,13 @@ type TestInternalStruct struct {
 }
 
 type TestStruct struct {
-	IntData       int8    `default:"${INT_PREFIX}1"`
-	UIntData      uint16  `default:"${UINT_PREFIX}123"`
-	FloatData     float32 `default:"${FLOAT_PREFIX}78"`
-	StringData    string  `default:"${STRING_PREFIX}Test"`
-	BoolData      bool    `default:"${BOOL_PREFIX}"`
-	BlackListData string  `default:"BlackList"`
+	IntData       int8     `default:"${INT_PREFIX}1"`
+	UIntData      uint16   `default:"${UINT_PREFIX}123"`
+	FloatData     float32  `default:"${FLOAT_PREFIX}78"`
+	StringData    string   `default:"${STRING_PREFIX}Test"`
+	BoolData      bool     `default:"${BOOL_PREFIX}"`
+	BlackListData string   `default:"BlackList"`
+	Slice         []string `default:"one,two,free"`
 	NoTagData     string
 	IntStruct     TestInternalStruct
 }
@@ -63,6 +68,10 @@ func verifyResult(t *testing.T, res TestStruct, isWithBalckList bool) {
 	assert.Equal(t, EXPECTED_STRING, res.StringData)
 	assert.Equal(t, EXPECTED_NO_TAG, res.NoTagData)
 	assert.Equal(t, EXPECTED_BOOL, res.BoolData)
+	assert.Equal(t, EXPECTED_SLICE_SIZE, len(res.Slice))
+	assert.Equal(t, EXPECTED_SLICE_VAL0, res.Slice[0])
+	assert.Equal(t, EXPECTED_SLICE_VAL1, res.Slice[1])
+	assert.Equal(t, EXPECTED_SLICE_VAL2, res.Slice[2])
 	if isWithBalckList {
 		assert.Equal(t, res.BlackListData, EXPECTED_BLACK_BLACK)
 	} else {

@@ -28,6 +28,10 @@ const (
 	EXPECTED_JSON_STRING     = "testdata"
 	EXPECTED_JSON_INT_INT    = int16(5566)
 	EXPECTED_JSON_INT_STRING = "intstring"
+	EXPECTED_JSON_SLICE_SIZE = 3
+	EXPECTED_JSON_SLICE_VAL0 = "one"
+	EXPECTED_JSON_SLICE_VAL1 = "two"
+	EXPECTED_JSON_SLICE_VAL2 = "free"
 )
 
 type IntJsonTestStruct struct {
@@ -41,6 +45,7 @@ type JsonTestStruct struct {
 	FloatData  float32           `json:"${JSON_FLOAT_PREFIX}Data"`
 	StringData string            `json:"${JSON_STRING_PREFIX}Data"`
 	BoolData   bool              `json:"${JSON_BOOL_PREFIX}Data"`
+	SliceData  []string          `json:"$.slice"`
 	IntStruct  IntJsonTestStruct `json:"struct"`
 }
 
@@ -52,6 +57,7 @@ const JSON_PROC_DATA = `{
 				"FloatData" : 67.8,
 				"StringData" : "testdata",
 				"BoolData" : true,
+				"slice" : ["one","two","free"],
 				"struct" : {
 					"IntIntData" : 5566,
 					"IntStrData" : "intstring"
@@ -88,6 +94,10 @@ func jsonProcessorVerifyResult(t *testing.T, res JsonTestStruct) {
 	assert.Equal(t, EXPECTED_JSON_FLOAT, res.FloatData)
 	assert.Equal(t, EXPECTED_JSON_STRING, res.StringData)
 	assert.Equal(t, EXPECTED_JSON_BOOL, res.BoolData)
+	assert.Equal(t, EXPECTED_JSON_SLICE_SIZE, len(res.SliceData))
+	assert.Equal(t, EXPECTED_JSON_SLICE_VAL0, res.SliceData[0])
+	assert.Equal(t, EXPECTED_JSON_SLICE_VAL1, res.SliceData[1])
+	assert.Equal(t, EXPECTED_JSON_SLICE_VAL2, res.SliceData[2])
 	assert.Equal(t, EXPECTED_JSON_INT_INT, res.IntStruct.IntData)
 	assert.Equal(t, EXPECTED_JSON_INT_STRING, res.IntStruct.StringData)
 }
