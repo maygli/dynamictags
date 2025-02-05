@@ -345,13 +345,14 @@ func (processor DynamicTagProcessor) processSimpleType(t reflect.StructField, v 
 	return nil
 }
 
-func (processor DynamicTagProcessor) fillTagsPath(t reflect.StructField, tagPaths map[string]string) error {
+func (processor DynamicTagProcessor) fillTagsPath(t reflect.StructField, tagPaths map[string]string) (map[string]string, error) {
+	newMap := make(map[string]string, len(tagPaths))
 	for _, converter := range processor.converters {
 		tag := converter.GetTag()
 		tagVal := t.Tag.Get(tag)
 		tagVal, err := ProcessString(tagVal, processor.dictionary)
 		if err != nil {
-			return err
+			return newMap, err
 		}
 		currTagPath := tagVal
 		if !strings.HasPrefix(tagVal, "$") {
@@ -365,9 +366,9 @@ func (processor DynamicTagProcessor) fillTagsPath(t reflect.StructField, tagPath
 			}
 			currTagPath = currTagPath + "." + tagVal
 		}
-		tagPaths[tag] = currTagPath
+		newMap[tag] = currTagPath
 	}
-	return nil
+	return newMap, nil
 }
 
 func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.Value, path string, tagpaths map[string]string, blackList []string) error {
@@ -390,11 +391,11 @@ func (processor DynamicTagProcessor) processStructure(t reflect.Type, v reflect.
 		currPath := path + "." + fieldType.Name
 		if blackList == nil || !slices.Contains(blackList, currPath) {
 			if fieldValue.Kind() == reflect.Struct {
-				err = processor.fillTagsPath(fieldType, tagpaths)
+				newTagsPath, err := processor.fillTagsPath(fieldType, tagpaths)
 				if err != nil {
 					return err
 				}
-				err = processor.processStructure(fieldType.Type, fieldValue, currPath, tagpaths, blackList)
+				err = processor.processStructure(fieldType.Type, fieldValue, currPath, newTagsPath, blackList)
 			} else {
 				err = processor.processSimpleType(fieldType, fieldValue, tagpaths, path)
 			}
